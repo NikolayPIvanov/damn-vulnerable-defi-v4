@@ -23,6 +23,7 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
     uint64 public immutable end = uint64(block.timestamp) + GRACE_PERIOD;
 
     address public feeRecipient;
+    uint256 public s_totalAssets;
 
     error InvalidAmount(uint256 amount);
     error InvalidBalance();
@@ -35,6 +36,7 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
         ERC4626(_token, "Too Damn Valuable Token", "tDVT")
         Owned(_owner)
     {
+        // @audit missing zero address check
         feeRecipient = _feeRecipient;
         emit FeeRecipientUpdated(_feeRecipient);
     }
@@ -59,6 +61,7 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
         }
 
         if (block.timestamp < end && _amount < maxFlashLoan(_token)) {
+            // @audit-ok there is no fee for a given grace period and under a given amount.
             return 0;
         } else {
             return _amount.mulWadUp(FEE_FACTOR);
@@ -82,6 +85,8 @@ contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC462
         if (amount == 0) revert InvalidAmount(0); // fail early
         if (address(asset) != _token) revert UnsupportedCurrency(); // enforce ERC3156 requirement
         uint256 balanceBefore = totalAssets();
+        // @audit if we transfer funds the total assets will be increases but not the total supply. This is because we are using the balanceOf(address) method.
+        // if we transfer the player DVT, the total assets will increase but the total supply will not, thus breaking this check.
         if (convertToShares(totalSupply) != balanceBefore) revert InvalidBalance(); // enforce ERC4626 requirement
 
         // transfer tokens out + execute callback on receiver
