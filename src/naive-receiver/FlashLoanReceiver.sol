@@ -12,6 +12,7 @@ contract FlashLoanReceiver is IERC3156FlashBorrower {
         pool = _pool;
     }
 
+    // @audit-info must only be called from pool address otherwise revert
     function onFlashLoan(address, address token, uint256 amount, uint256 fee, bytes calldata)
         external
         returns (bytes32)

@@ -1,5 +1,9 @@
 # Damn Vulnerable DeFi V4 - Unstoppable
 
+## Blog Post
+
+<https://hackmd.io/@0xnick/H1NphWBIyx>
+
 ## Introduction
 
 There's a tokenized vault with a million DVT tokens deposited. It’s offering flash loans for free, until the grace period ends.
@@ -9,6 +13,8 @@ To catch any bugs before going 100% permissionless, the developers decided to ru
 Starting with 10 DVT tokens in balance, show that it's possible to halt the vault. It must stop offering flash loans.
 
 ## Scope
+
+[Repository](https://github.com/NikolayPIvanov/damn-vulnerable-defi-v4)
 
 - src/unstoppable/UnstoppableMonitor.sol
 - src/unstoppable/UnstoppableVault.sol
@@ -97,7 +103,3 @@ function flashLoan(IERC3156FlashBorrower receiver, address _token, uint256 amoun
         return true;
     }
 ```
-
-### Blog Post
-
-<https://hackmd.io/@0xnick/H1NphWBIyx>
