@@ -25,6 +25,9 @@ contract TrusterLenderPool is ReentrancyGuard {
         uint256 balanceBefore = token.balanceOf(address(this));
 
         token.transfer(borrower, amount);
+        // This calls arbitrary function on any passed address
+        // We can just use approve on the DVT token to allow the attacker to drain the funds
+        // This must be done a single transaction - most likely deploying a contract
         target.functionCall(data);
 
         if (token.balanceOf(address(this)) < balanceBefore) {
